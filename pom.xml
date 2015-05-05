@@ -9,9 +9,31 @@
   <url>http://maven.apache.org</url>
   <dependencies>
       <dependency>
+          <groupId>info.thinkmore</groupId>
+          <artifactId>simple-assert</artifactId>
+          <version>1.0-SNAPSHOT</version>
+      </dependency>
+      <!--<dependency>-->
+          <!--<groupId>org.codehaus.plexus</groupId>-->
+          <!--<artifactId>plexus-utils</artifactId>-->
+          <!--<version>3.0.22</version>-->
+      <!--</dependency>-->
+      <!--<dependency>-->
+          <!--<groupId>org.codehaus.plexus</groupId>-->
+          <!--<artifactId>plexus-cli</artifactId>-->
+          <!--<version>1.6</version>-->
+      <!--</dependency>-->
+      <dependency>
+          <groupId>org.projectlombok</groupId>
+          <artifactId>lombok</artifactId>
+          <version>1.16.4</version>
+          <scope>provided</scope>
+      </dependency>
+      <dependency>
           <groupId>org.apache.maven</groupId>
           <artifactId>maven-core</artifactId>
           <version>3.2.5</version>
+          <scope>provided</scope>
       </dependency>
       <dependency>
           <groupId>org.apache.maven</groupId>
@@ -23,6 +45,7 @@
           <groupId>org.apache.maven</groupId>
           <artifactId>maven-compat</artifactId>
           <version>3.2.5</version>
+          <scope>provided</scope>
       </dependency>
 
       <!-- dependencies to annotations -->
@@ -50,15 +73,20 @@
           <artifactId>maven-plugin-api</artifactId>
           <version>3.0.4</version>
       </dependency>
-      <dependency>
-          <groupId>org.apache.maven</groupId>
-          <artifactId>maven-project</artifactId>
-          <version>3.0-alpha-2</version>
-      </dependency>
+      <!--<dependency>-->
+      <!--<groupId>com.jcabi</groupId>-->
+      <!--<artifactId>jcabi-aether</artifactId>-->
+      <!--<version>0.10.1</version>-->
+      <!--</dependency>-->
+      <!--<dependency>-->
+      <!--<groupId>org.apache.maven</groupId>-->
+      <!--<artifactId>maven-project</artifactId>-->
+      <!--<version>3.0-alpha-2</version>-->
+      <!--</dependency>-->
       <dependency>
           <groupId>junit</groupId>
           <artifactId>junit</artifactId>
-          <version>4.11</version>
+          <version>4.12</version>
           <scope>test</scope>
       </dependency>
   </dependencies>
@@ -68,12 +96,17 @@
               <groupId>org.apache.maven.plugins</groupId>
               <artifactId>maven-plugin-plugin</artifactId>
               <version>3.3</version>
+              <configuration>
+                  <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
+              </configuration>
               <executions>
                   <execution>
-                      <id>default-descriptor</id>
+                      <id>mojo-descriptor</id>
                       <phase>process-classes</phase>
+                      <goals>
+                          <goal>descriptor</goal>
+                      </goals>
                   </execution>
-                  <!-- if you want to generate help goal -->
                   <execution>
                       <id>help-goal</id>
                       <goals>
@@ -83,5 +116,47 @@
               </executions>
           </plugin>
       </plugins>
+      <pluginManagement>
+          <plugins>
+              <!--This plugin's configuration is used to store Eclipse m2e settings only. It has no influence on the Maven build itself.-->
+              <plugin>
+                  <groupId>org.eclipse.m2e</groupId>
+                  <artifactId>lifecycle-mapping</artifactId>
+                  <version>1.0.0</version>
+                  <configuration>
+                      <lifecycleMappingMetadata>
+                          <pluginExecutions>
+                              <pluginExecution>
+                                  <pluginExecutionFilter>
+                                      <groupId>org.apache.maven.plugins</groupId>
+                                      <artifactId>maven-plugin-plugin</artifactId>
+                                      <versionRange>[3,)</versionRange>
+                                      <goals>
+                                          <goal>descriptor</goal>
+                                      </goals>
+                                  </pluginExecutionFilter>
+                                  <action>
+                                      <ignore></ignore>
+                                  </action>
+                              </pluginExecution>
+                              <pluginExecution>
+                                  <pluginExecutionFilter>
+                                      <groupId>org.apache.maven.plugins</groupId>
+                                      <artifactId>maven-plugin-plugin</artifactId>
+                                      <versionRange>[3,)</versionRange>
+                                      <goals>
+                                          <goal>helpmojo</goal>
+                                      </goals>
+                                  </pluginExecutionFilter>
+                                  <action>
+                                      <ignore></ignore>
+                                  </action>
+                              </pluginExecution>
+                          </pluginExecutions>
+                      </lifecycleMappingMetadata>
+                  </configuration>
+              </plugin>
+          </plugins>
+      </pluginManagement>
   </build>
 </project>
