@@ -37,9 +37,14 @@ import com.google.common.base.*;
 
 @Mojo( 
     name = "run", 
-    defaultPhase = LifecyclePhase.PROCESS_CLASSES, 
+    defaultPhase = LifecyclePhase.COMPILE,
     requiresDependencyResolution = ResolutionScope.COMPILE, 
     threadSafe = true 
+    )
+@Execute( 
+    goal = "run",
+    phase = LifecyclePhase.COMPILE,
+    lifecycle = "cofojainject"
     )
 public class CofojaOfflineMojo extends AbstractMojo
 {

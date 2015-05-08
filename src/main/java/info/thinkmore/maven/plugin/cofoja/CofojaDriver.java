@@ -2,6 +2,7 @@ package info.thinkmore.maven.plugin.cofoja;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -139,28 +140,83 @@ public class CofojaDriver{
         }
     }
 
+    boolean moveContractsAndHelpContracts( File sourceFile, File destFile ){
+        if( !sourceFile.renameTo( destFile ) ){
+            return false;
+        }
+
+        final String pattern = Filename.of( sourceFile.getName() ).getName() + "$";
+        System.out.println( pattern );
+
+        File[] files = sourceFile.getParentFile().listFiles( new FilenameFilter(){
+            //@Override
+            public boolean accept(File dir, String name ){
+                return name.startsWith( pattern ) && name.endsWith( ".contracts" );
+            }
+        } );
+
+        File destPath = destFile.getParentFile();
+
+        for( File srcFile : files ){
+            System.out.println( srcFile.getPath() );
+            if( !srcFile.renameTo( new File( destPath, srcFile.getName() ) ) ){
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    void copyClassAndHelpClass( File sourceFile, File destFile ){
+        try{
+            Files.copy(sourceFile, destFile );
+            final String pattern = Filename.of( sourceFile.getName() ).getName() + "$";
+            System.out.println( pattern );
+
+            File[] files = sourceFile.getParentFile().listFiles( new FilenameFilter(){
+                //@Override
+                public boolean accept(File dir, String name ){
+                    return name.startsWith( pattern ) && name.endsWith( ".class" );
+                }
+            } );
+
+            File destPath = destFile.getParentFile();
+
+            for( File srcFile : files ){
+                System.out.println( srcFile.getPath() );
+                Files.copy( srcFile, new File( destPath, srcFile.getName() ) );
+            }
+        }
+        catch(IOException e){
+            throw new RuntimeException(e);
+        }
+    }
+
     void handle( File src ){
         try{
             if( info.thinkmore.SimpleAssert.enable ){
                 info.thinkmore.SimpleAssert.assertTrue( src.getAbsolutePath().startsWith( sourceDirectory.getAbsolutePath() ) );
             }
 
-            Filename relativePath = Filename.of( src.getAbsolutePath().substring( sourceDirectory.getAbsolutePath().length() + 1 ) );
+            Filename relativePath = Filename.of( src.getAbsolutePath().substring( sourceDirectory.getAbsolutePath().length() + 1 )  );
             System.out.println( String.format( "Meet file here: %s:%s", relativePath.toString(), relativePath.getExt() ) );
 
             if( relativePath.getExt().equals( "java" ) ){
+                System.out.println( "1" );
                 File classFile = new File( outputDirectory, relativePath.changeExt( "class" ) );
                 File origClassFile = new File( contractDirectory, relativePath.changeExt( "class" ) );
                 File markFile = new File( contractDirectory, relativePath.changeExt( "contracts" ) );
                 File contractFile = new File( outputDirectory, relativePath.changeExt( "contracts" ) );
+                System.out.println( classFile.getPath() );
                 //if class file exits then
                 if( classFile.exists() ){
+                    System.out.println( "2" );
                     File path = markFile.getParentFile();
                     if( !path.exists() ){
                         path.mkdirs(); 
                     }
 
-                    Files.copy(classFile, origClassFile );
+                    copyClassAndHelpClass(classFile, origClassFile );
 
                     System.out.println( "Class file exists!" );
                     //if ( mark file not exits ) or ( mark file is older than class file )
@@ -175,7 +231,7 @@ public class CofojaDriver{
                             //move contract file to contract directory
                             markFile.delete();
 
-                            if( !contractFile.renameTo(markFile) ){
+                            if( !moveContractsAndHelpContracts( contractFile, markFile) ){
                                 System.out.println( String.format("Renmae contracts file from %s to %s error!", contractFile.getAbsolutePath(), markFile.getAbsolutePath() ) );
                             }
 

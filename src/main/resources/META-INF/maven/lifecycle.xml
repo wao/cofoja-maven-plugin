@@ -1,0 +1,17 @@
+<lifecycles>
+    <lifecycle>
+        <id>cofojainject</id>
+        <phases>
+            <phase>
+                <id>process-classes</id>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </phase>
+        </phases>
+    </lifecycle>
+</lifecycles>
