@@ -122,14 +122,17 @@ public class CofojaOfflineMojo extends AbstractMojo
             if( outputDirectory == null ){
                 throw new MojoExecutionException( "outputDirectory is not setted" );
             }
+            getLog().debug( "outputDirectory=" + outputDirectory.getPath() );
 
             if( sourceDirectory == null ){
                 throw new MojoExecutionException( "sourceDirectory is not setted" );
             }
+            getLog().debug( "sourceDirectory=" + sourceDirectory.getPath() );
 
             if( contractDirectory == null ){
                 throw new MojoExecutionException( "sourceDirectory is not setted" );
             }
+            getLog().debug( "contractDirectory=" + contractDirectory.getPath() );
 
             if( project == null ){
                 throw new MojoExecutionException( "project is not setted" );
@@ -145,13 +148,11 @@ public class CofojaOfflineMojo extends AbstractMojo
                 f.mkdirs();
             }
 
-            System.out.println( String.format( "Class path: %s", getClasspath() ) );
+            //System.out.println( String.format( "Class path: %s", getClasspath() ) );
 
-            CofojaDriver cmd = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, getClasspath() );
+            CofojaDriver cmd = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, getClasspath(), getLog() );
 
-            cmd.find( sourceDirectory );
-
-
+            getLog().info( String.format( "Write %d contracts.", cmd.find( sourceDirectory ) ) );
 
             //catch ( IOException e )
             //{
@@ -159,7 +160,8 @@ public class CofojaOfflineMojo extends AbstractMojo
             //}
         }
         catch(Exception ex){
-            ex.printStackTrace( new PrintStream(System.out) );
+            //ex.printStackTrace( new PrintStream(System.out) );
+            throw new MojoExecutionException( "Cofoja-maven-plugin execution error.", ex );
         }
     }
 }

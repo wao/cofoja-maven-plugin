@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.logging.Log;
 
 import com.google.common.base.Joiner;
 import com.google.common.collect.Lists;
@@ -20,10 +21,12 @@ import lombok.*;
 
 @Value(staticConstructor="newInstance")
 public class CofojaDriver{
+
     File sourceDirectory;
     File outputDirectory;
     File contractDirectory;
     String classpath;
+    private final Log logger;
 
     String getClasspath(){
         return classpath;
@@ -31,7 +34,7 @@ public class CofojaDriver{
 
 
     boolean exec( List<String> cmds, Map<String, String> env ){
-        System.out.println( String.format( "Exec: %s", Joiner.on(" ").join( cmds ) ) );
+        logger.debug( String.format( "Exec: %s", Joiner.on(" ").join( cmds ) ) );
         ProcessBuilder pb = new ProcessBuilder( cmds ); 
         pb.redirectErrorStream( true );
 
@@ -46,7 +49,7 @@ public class CofojaDriver{
             BufferedReader reader = new BufferedReader(new InputStreamReader(ip));
             String line;
             while( (line = reader.readLine()) != null ){
-                System.out.println( line );
+                logger.debug( line );
             }
             reader.close();
             result = pb.start().waitFor();
@@ -58,7 +61,7 @@ public class CofojaDriver{
             throw new RuntimeException(e);
         }
 
-        System.out.println( String.format( "Exec result: %d", result ) );
+        logger.debug( String.format( "Exec result: %d", result ) );
         return result == 0;
 
     }
@@ -129,15 +132,19 @@ public class CofojaDriver{
         //return true;
     }
 
-    void find( File dir ){
+    int find( File dir ) throws MojoExecutionException{
+        int count = 0;
         for( File entry : dir.listFiles() ){
             if( entry.isDirectory() ){
-                find( entry );
+                count += find( entry );
             }
             else{
-                handle( entry );
+                count += handle( entry );
             }
         }
+
+        return count;
+
     }
 
     boolean moveContractsAndHelpContracts( File sourceFile, File destFile ){
@@ -146,7 +153,7 @@ public class CofojaDriver{
         }
 
         final String pattern = Filename.of( sourceFile.getName() ).getName() + "$";
-        System.out.println( pattern );
+        //System.out.println( pattern );
 
         File[] files = sourceFile.getParentFile().listFiles( new FilenameFilter(){
             //@Override
@@ -158,7 +165,8 @@ public class CofojaDriver{
         File destPath = destFile.getParentFile();
 
         for( File srcFile : files ){
-            System.out.println( srcFile.getPath() );
+            //System.out.println( srcFile.getPath() );
+            logger.debug( "Handle contracts file: " + srcFile.getPath() );
             if( !srcFile.renameTo( new File( destPath, srcFile.getName() ) ) ){
                 return false;
             }
@@ -171,7 +179,7 @@ public class CofojaDriver{
         try{
             Files.copy(sourceFile, destFile );
             final String pattern = Filename.of( sourceFile.getName() ).getName() + "$";
-            System.out.println( pattern );
+            //System.out.println( pattern );
 
             File[] files = sourceFile.getParentFile().listFiles( new FilenameFilter(){
                 //@Override
@@ -183,7 +191,8 @@ public class CofojaDriver{
             File destPath = destFile.getParentFile();
 
             for( File srcFile : files ){
-                System.out.println( srcFile.getPath() );
+                //System.out.println( srcFile.getPath() );
+                logger.debug( "Copy helper class: " + srcFile.getPath() );
                 Files.copy( srcFile, new File( destPath, srcFile.getName() ) );
             }
         }
@@ -192,25 +201,24 @@ public class CofojaDriver{
         }
     }
 
-    void handle( File src ){
+    int handle( File src ) throws MojoExecutionException{
+        int ret = 0;
         try{
             if( info.thinkmore.SimpleAssert.enable ){
                 info.thinkmore.SimpleAssert.assertTrue( src.getAbsolutePath().startsWith( sourceDirectory.getAbsolutePath() ) );
             }
 
             Filename relativePath = Filename.of( src.getAbsolutePath().substring( sourceDirectory.getAbsolutePath().length() + 1 )  );
-            System.out.println( String.format( "Meet file here: %s:%s", relativePath.toString(), relativePath.getExt() ) );
+            logger.debug( String.format( "Find source file: %s:%s", relativePath.toString(), relativePath.getExt() ) );
 
             if( relativePath.getExt().equals( "java" ) ){
-                System.out.println( "1" );
                 File classFile = new File( outputDirectory, relativePath.changeExt( "class" ) );
                 File origClassFile = new File( contractDirectory, relativePath.changeExt( "class" ) );
                 File markFile = new File( contractDirectory, relativePath.changeExt( "contracts" ) );
                 File contractFile = new File( outputDirectory, relativePath.changeExt( "contracts" ) );
-                System.out.println( classFile.getPath() );
+                logger.debug( "Test existense of class file: " + classFile.getPath() );
                 //if class file exits then
                 if( classFile.exists() ){
-                    System.out.println( "2" );
                     File path = markFile.getParentFile();
                     if( !path.exists() ){
                         path.mkdirs(); 
@@ -218,13 +226,14 @@ public class CofojaDriver{
 
                     copyClassAndHelpClass(classFile, origClassFile );
 
-                    System.out.println( "Class file exists!" );
+                    logger.debug( "Class file exists!" );
                     //if ( mark file not exits ) or ( mark file is older than class file )
                     if( ( !markFile.exists() ) || ( markFile.lastModified() < classFile.lastModified() ) ){
                         //regenerate contract file
                         if( !generateContract( src ) ){
-                            System.out.println( "Generate contract error!" );
-                            throw new MojoExecutionException(  "Generate contract error!" );
+                            String msg = String.format( "Generate contract error for class file: %s ", src.getPath()  );
+                            logger.error( msg );
+                            throw new MojoExecutionException( msg );
                         }
                         //if new contract file generated
                         if( contractFile.exists() ){
@@ -232,15 +241,19 @@ public class CofojaDriver{
                             markFile.delete();
 
                             if( !moveContractsAndHelpContracts( contractFile, markFile) ){
-                                System.out.println( String.format("Renmae contracts file from %s to %s error!", contractFile.getAbsolutePath(), markFile.getAbsolutePath() ) );
+                                String msg = String.format("Renmae contracts file from %s to %s error!", contractFile.getAbsolutePath(), markFile.getAbsolutePath() );
+                                logger.error( msg );
+                                throw new MojoExecutionException( msg );
                             }
 
                             //using offline writer to weave contract
                             if( !offlineWrite( origClassFile ) ){
-                                System.out.println( "OfflineWriter error!" );
-                                throw new MojoExecutionException(  "OfflineWriter error!" );
+                                String msg = "OfflineWriter error for class file:" + origClassFile.getPath();
+                                logger.error( msg );
+                                throw new MojoExecutionException(  msg );
                             }
 
+                            ret = 1;
                         }
                         //else
                         else{
@@ -254,9 +267,14 @@ public class CofojaDriver{
                     //end
                 }
             }
+            return ret;
+        }
+        catch( MojoExecutionException ex ){
+            throw ex;
         }
         catch(Exception ex){
-            ex.printStackTrace( new PrintStream(System.out) );
+            logger.error( "CofojaDriver handle: Unknown exception." );
+            throw new MojoExecutionException( "CofojaDriver handle: Unknown exception.", ex );
         }
     }
 }

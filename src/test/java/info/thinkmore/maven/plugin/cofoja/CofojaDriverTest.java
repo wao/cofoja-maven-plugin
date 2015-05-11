@@ -2,6 +2,7 @@ package info.thinkmore.maven.plugin.cofoja;
 
 import java.io.File;
 
+import org.apache.maven.plugin.logging.SystemStreamLog;
 import org.junit.Before;
 import org.junit.Rule;
 
@@ -46,7 +47,7 @@ public class CofojaDriverTest
     
     //@Test
     public void testCompileAndGenerate() throws Exception{
-        CofojaDriver driver = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, classpath );
+        CofojaDriver driver = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, classpath, new SystemStreamLog() );
         assertTrue( ! classFile.exists() );
         assertTrue( ! contractFile.exists() );
         assertTrue( ! classHelpFile.exists() );
@@ -65,7 +66,7 @@ public class CofojaDriverTest
 
     @Test
     public void testFind() throws Exception{
-        CofojaDriver driver = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, classpath );
+        CofojaDriver driver = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, classpath, new SystemStreamLog() );
         assertTrue( ! classFile.exists() );
         assertTrue( ! classHelpFile.exists() );
         assertTrue( ! origClassFile.exists() );
