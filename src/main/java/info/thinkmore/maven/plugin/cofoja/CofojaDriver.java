@@ -26,6 +26,7 @@ public class CofojaDriver{
     File outputDirectory;
     File contractDirectory;
     String classpath;
+    File dumpDirectory;
     private final Log logger;
 
     String getClasspath(){
@@ -104,6 +105,7 @@ public class CofojaDriver{
         cmds.add(String.format("-Acom.google.java.contract.classpath=%s", getClasspath()));
         cmds.add(String.format("-Acom.google.java.contract.sourcepath=%s", sourceDirectory.getAbsolutePath() ) );
         cmds.add(String.format("-Acom.google.java.contract.classoutput=%s", outputDirectory.getAbsolutePath() ) );
+        cmds.add(String.format("-Acom.google.java.contract.dump=%s", dumpDirectory.getAbsolutePath() ) );
         cmds.add("-Acom.google.java.contract.debug");
         cmds.add("-Acom.google.java.contract.realwork");
         cmds.add( src.getAbsolutePath() );
@@ -132,19 +134,99 @@ public class CofojaDriver{
         //return true;
     }
 
-    int find( File dir ) throws MojoExecutionException{
+    static interface FileHandle{
+        int handle( File entry ) throws MojoExecutionException;
+    }
+
+    int find( File dir, FileHandle fh ) throws MojoExecutionException{
         int count = 0;
         for( File entry : dir.listFiles() ){
             if( entry.isDirectory() ){
-                count += find( entry );
+                count += find( entry, fh );
             }
             else{
-                count += handle( entry );
+                count += fh.handle( entry );
             }
         }
 
         return count;
 
+    }
+
+    int process() throws MojoExecutionException{
+        //Scan all the java file and generate contracts file
+        find( sourceDirectory, new FileHandle(){
+            @Override
+            public int handle( File src ) throws MojoExecutionException{
+                Filename relativePath = Filename.of( src.getAbsolutePath().substring( sourceDirectory.getAbsolutePath().length() + 1 )  );
+                logger.debug( String.format( "Find source file: %s:%s", relativePath.toString(), relativePath.getExt() ) );
+                if( relativePath.getExt().equals( "java" ) ){
+                    if( !generateContract( src ) ){
+                        String msg = String.format( "Generate contract error for class file: %s ", src.getPath()  );
+                        logger.error( msg );
+                        throw new MojoExecutionException( msg );
+                    }
+                }
+                return 1;
+            }
+        });
+
+        //Scan all the contracts file and move to contract directory
+        find( outputDirectory, new FileHandle(){
+            @Override
+            public int handle( File src ) throws MojoExecutionException{
+                try{
+                Filename relativePath = Filename.of( src.getAbsolutePath().substring( outputDirectory.getAbsolutePath().length() + 1 )  );
+                File markFile = new File( contractDirectory, relativePath.changeExt( "contracts" ) );
+                File origClassFile = new File( contractDirectory, relativePath.changeExt( "class" ) );
+                logger.debug( String.format( "Find contracts file: %s:%s", relativePath.toString(), relativePath.getExt() ) );
+                File path = markFile.getParentFile();
+                if( !path.exists() ){
+                    path.mkdirs(); 
+                }
+
+                if( relativePath.getExt().equals( "contracts" ) ){
+                    logger.debug( String.format( "Move contracts file: %s:%s", relativePath.toString(), relativePath.getExt() ) );
+                    src.renameTo( markFile );
+                    return 1;
+                }
+                if( relativePath.getExt().equals( "class" ) ){
+                    logger.debug( String.format( "Copy class file: %s:%s", relativePath.toString(), relativePath.getExt() ) );
+                    Files.copy(src, origClassFile );
+                    return 1;
+                }
+                return 0;
+                }
+                catch(IOException e){
+                    throw new MojoExecutionException( String.format("IOException:%s", e.getMessage() ),e );
+                }
+            }
+        });
+
+        //Scan all java file and weave contracts
+        find( sourceDirectory, new FileHandle(){
+            @Override
+            public int handle( File src ) throws MojoExecutionException{
+                Filename relativePath = Filename.of( src.getAbsolutePath().substring( sourceDirectory.getAbsolutePath().length() + 1 )  );
+                if( relativePath.getExt().equals( "java" ) ){
+                    logger.debug( String.format( "Weave Contracts for %s:%s", relativePath.toString(), relativePath.getExt() ) );
+                    File origClassFile = new File( contractDirectory, relativePath.changeExt( "class" ) );
+
+                    //using offline writer to weave contract
+                    if( origClassFile.exists() ){
+                        if( !offlineWrite( origClassFile ) ){
+                            String msg = "OfflineWriter error for class file:" + origClassFile.getPath();
+                            logger.error( msg );
+                            throw new MojoExecutionException(  msg );
+                        }
+                        return 1;
+                    }
+                }
+                return 0;
+            }
+        });
+
+        return 1;
     }
 
     boolean moveContractsAndHelpContracts( File sourceFile, File destFile ){
@@ -241,7 +323,7 @@ public class CofojaDriver{
                             markFile.delete();
 
                             if( !moveContractsAndHelpContracts( contractFile, markFile) ){
-                                String msg = String.format("Renmae contracts file from %s to %s error!", contractFile.getAbsolutePath(), markFile.getAbsolutePath() );
+                                String msg = String.format("Rename contracts file from %s to %s error!", contractFile.getAbsolutePath(), markFile.getAbsolutePath() );
                                 logger.error( msg );
                                 throw new MojoExecutionException( msg );
                             }

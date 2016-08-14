@@ -15,6 +15,7 @@ public class CofojaDriverTest
     File sourceDirectory = new File( "src/test/resources/unit/cofoja-maven-plugin-test/src/main/java" );
     File outputDirectory = new File( "target/test-result/classes" );
     File contractDirectory = new File( "target/test-result/contract" );
+    File dumpDirectory = new File( "target/test-result/dump" );
     String classpath = "src/test/resources/lib/cofoja-1.2-SNAPSHOT.jar:src/test/resources/lib/asm-all-5.0.3.jar";
 
     File sourceFile = new File( sourceDirectory, "info/thinkmore/maven/plugin/cofoja/test/App.java" );
@@ -32,8 +33,10 @@ public class CofojaDriverTest
         System.out.println( "clean ====================================" );
         outputDirectory.mkdirs();
         contractDirectory.mkdirs();
+        dumpDirectory.mkdirs();
         deleteDirectoryContent(outputDirectory);
         deleteDirectoryContent(contractDirectory);
+        deleteDirectoryContent(dumpDirectory);
     }
 
     void deleteDirectoryContent(File dir){
@@ -47,7 +50,7 @@ public class CofojaDriverTest
     
     //@Test
     public void testCompileAndGenerate() throws Exception{
-        CofojaDriver driver = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, classpath, new SystemStreamLog() );
+        CofojaDriver driver = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, classpath, dumpDirectory, new SystemStreamLog() );
         assertTrue( ! classFile.exists() );
         assertTrue( ! contractFile.exists() );
         assertTrue( ! classHelpFile.exists() );
@@ -66,7 +69,7 @@ public class CofojaDriverTest
 
     @Test
     public void testFind() throws Exception{
-        CofojaDriver driver = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, classpath, new SystemStreamLog() );
+        CofojaDriver driver = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, classpath, dumpDirectory, new SystemStreamLog() );
         assertTrue( ! classFile.exists() );
         assertTrue( ! classHelpFile.exists() );
         assertTrue( ! origClassFile.exists() );
@@ -80,7 +83,7 @@ public class CofojaDriverTest
         assertTrue( ! origClassHelpFile.exists() );
         assertTrue( ! markFile.exists() );
         assertTrue( ! markHelpFile.exists() );
-        driver.find( sourceDirectory );
+        driver.process();
         assertTrue( origClassFile.exists() );
         assertTrue( classHelpFile.exists() );
         assertTrue( origClassHelpFile.exists() );

@@ -57,6 +57,9 @@ public class CofojaOfflineMojo extends AbstractMojo
     @Parameter( property = "sourceDirectory", defaultValue = "${project.build.sourceDirectory}" )
     private File sourceDirectory;
 
+    @Parameter( property = "dumpDirectory", defaultValue = "${project.build.directory}/dump" )
+    private File dumpDirectory;
+
     @Component
     private MavenProject project;
 
@@ -150,9 +153,9 @@ public class CofojaOfflineMojo extends AbstractMojo
 
             //System.out.println( String.format( "Class path: %s", getClasspath() ) );
 
-            CofojaDriver cmd = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, getClasspath(), getLog() );
+            CofojaDriver cmd = CofojaDriver.newInstance( sourceDirectory, outputDirectory, contractDirectory, getClasspath(), dumpDirectory, getLog() );
 
-            getLog().info( String.format( "Write %d contracts.", cmd.find( sourceDirectory ) ) );
+            getLog().info( String.format( "Write %d contracts.", cmd.process() ) );
 
             //catch ( IOException e )
             //{
